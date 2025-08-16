@@ -14,12 +14,18 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Route::get('/dashboard', function () {
+//     return Inertia::render('Dashboard');
+// })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::get('/programs', function () {
     return Inertia::render('Programs');
+});
+Route::get('/dashboard', function () {
+    return Inertia::render('Dashboard');
+});
+Route::get('/signup', function () {
+    return Inertia::render('Auth/Signup');
 });
 
 Route::middleware('auth')->group(function () {
