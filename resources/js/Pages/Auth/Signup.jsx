@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import axios from 'axios';
 
 const FreeBootcampRegistration = () => {
   const [formData, setFormData] = useState({
@@ -21,6 +22,8 @@ const FreeBootcampRegistration = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
   const [showOtherCountry, setShowOtherCountry] = useState(false);
+  const [studentCredentials, setStudentCredentials] = useState({ studentId: '', password: '' });
+  const [submitError, setSubmitError] = useState('');
 
   const courses = [
     {
@@ -121,18 +124,61 @@ const FreeBootcampRegistration = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError('');
     
     if (validateForm()) {
       setIsSubmitting(true);
       
-      // Simulate API call
-      setTimeout(() => {
-        setIsSubmitting(false);
+      try {
+        // Prepare data for backend
+        const payload = {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          middleName: formData.middleName,
+          email: formData.email,
+          country: formData.country === 'Other' ? formData.otherCountry : formData.country,
+          state: formData.state,
+          city: formData.city,
+          phone: formData.phone,
+          whatsapp: formData.whatsapp,
+          course: formData.course,
+          agreeTerms: formData.agreeTerms
+        };
+
+        // Send registration data to backend
+        const response = await axios.post('/register-bootcamp', payload);
+        
+        // Store generated credentials
+        setStudentCredentials({
+          studentId: response.data.student_id,
+          password: response.data.password
+        });
+        
         setIsSubmitted(true);
-        console.log('Bootcamp registration submitted:', formData);
-      }, 1500);
+      } catch (error) {
+        console.error('Registration error:', error);
+        
+        // Handle different error types
+        if (error.response) {
+          // Server responded with error status
+          if (error.response.status === 422) {
+            // Validation errors from backend
+            setErrors(error.response.data.errors || {});
+          } else {
+            setSubmitError(error.response.data.message || 'Registration failed. Please try again.');
+          }
+        } else if (error.request) {
+          // No response received
+          setSubmitError('No response from server. Please check your connection.');
+        } else {
+          // Other errors
+          setSubmitError('An error occurred. Please try again.');
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -154,6 +200,8 @@ const FreeBootcampRegistration = () => {
     setShowOtherCountry(false);
     setErrors({});
     setIsSubmitted(false);
+    setStudentCredentials({ studentId: '', password: '' });
+    setSubmitError('');
   };
 
   const selectedCourse = courses.find(course => course.id === formData.course);
@@ -209,6 +257,25 @@ const FreeBootcampRegistration = () => {
                     Congratulations! You've secured your spot in our free {selectedCourse.title}. 
                     We've sent a confirmation email with all the details.
                   </p>
+                  
+                  {/* Credentials Box */}
+                  <div className="bg-blue-50 rounded-lg p-4 mb-6 text-center border border-blue-200">
+                    <h4 className="font-semibold text-gray-800 mb-3">Your Login Credentials</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-left">
+                        <span className="text-sm text-gray-600 block">Student ID:</span>
+                        <span className="font-bold text-lg text-blue-700">{studentCredentials.studentId}</span>
+                      </div>
+                      <div className="text-left">
+                        <span className="text-sm text-gray-600 block">Password:</span>
+                        <span className="font-bold text-lg text-blue-700">{studentCredentials.password}</span>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-sm text-red-500">
+                      Please save these credentials. You'll need them to access the bootcamp portal.
+                    </p>
+                  </div>
+                  
                   <div className="bg-blue-50 rounded-lg p-4 mb-6 text-left">
                     <h4 className="font-semibold text-gray-800 mb-2">Next Steps:</h4>
                     <ul className="space-y-2 text-gray-600">
@@ -224,11 +291,17 @@ const FreeBootcampRegistration = () => {
                         </svg>
                         <span>Join our WhatsApp group for updates</span>
                       </li>
-                      <li className="flex items-start">
+                      {/* <li className="flex items-start">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#F7A400] mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Bootcamp starts in 3 days - be prepared!</span>
+                      </li> */}
+                      <li className="flex items-start">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#F7A400] mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Use your credentials to log in to the portal</span>
                       </li>
                     </ul>
                   </div>
@@ -241,6 +314,13 @@ const FreeBootcampRegistration = () => {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit}>
+                  {/* Submit Error Message */}
+                  {submitError && (
+                    <div className="bg-red-50 text-red-500 p-4 rounded-lg mb-6">
+                      {submitError}
+                    </div>
+                  )}
+                  
                   <div className="mb-6">
                     <h3 className="text-xl font-bold text-gray-900 mb-4">Personal Information</h3>
                     
