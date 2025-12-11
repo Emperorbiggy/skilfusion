@@ -29,4 +29,9 @@ class CreateBootcampRegistrationsTable extends Migration
     {
         Schema::dropIfExists('bootcamp_registrations');
     }
+    public function course()
+{
+    return $this->belongsTo(Course::class);
+}
+
 }

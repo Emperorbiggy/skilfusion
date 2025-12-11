@@ -148,7 +148,7 @@ const FreeBootcampRegistration = () => {
         };
 
         // Send registration data to backend
-        const response = await axios.post('/register-bootcamp', payload);
+        const response = await axios.post('/api/register-bootcamp', payload);
         
         // Store generated credentials
         setStudentCredentials({

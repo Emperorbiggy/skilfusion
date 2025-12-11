@@ -20,8 +20,20 @@ class BootcampAdminMail extends Mailable
 
     public function build()
     {
+        $courseName = $this->registration->course === 'web-development' 
+            ? 'Web Development' 
+            : 'UI/UX Design';
+            
+        $fullName = $this->registration->first_name . ' ' . $this->registration->last_name;
+        if ($this->registration->middle_name) {
+            $fullName = $this->registration->first_name . ' ' . $this->registration->middle_name . ' ' . $this->registration->last_name;
+        }
+
         return $this->subject('New Bootcamp Registration: ' . $this->registration->student_id)
-                    ->to('skilfusionuniversity@gmail.com')
-                    ->view('emails.bootcamp_admin');
+                    ->view('emails.bootcamp_admin')
+                    ->with([
+                        'courseName' => $courseName,
+                        'fullName' => $fullName
+                    ]);
     }
 }

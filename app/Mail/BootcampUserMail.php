@@ -24,7 +24,14 @@ class BootcampUserMail extends Mailable
 
     public function build()
     {
-        return $this->subject('Welcome to Skill Fusion Academy Bootcamp')
-                    ->view('emails.bootcamp_user');
+        $courseName = $this->registration->course === 'web-development' 
+            ? 'Web Development' 
+            : 'UI/UX Design';
+
+        return $this->subject('Welcome to Skill Fusion Academy!')
+                    ->view('emails.bootcamp_user')
+                    ->with([
+                        'courseName' => $courseName
+                    ]);
     }
 }

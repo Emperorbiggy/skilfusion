@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\BootcampRegistration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\BootcampUserMail;
+use App\Mail\UIUXAdmissionMail;
+use App\Mail\WebDevAdmissionMail;
 use App\Mail\BootcampAdminMail;
+use App\Mail\BootcampUserMail; 
 use Illuminate\Support\Facades\Log;
 
 class BootcampRegistrationController extends Controller
@@ -45,28 +47,16 @@ class BootcampRegistrationController extends Controller
             'whatsapp' => $validated['whatsapp'],
             'course' => $validated['course'],
             'student_id' => $studentId,
+            'admission_email_sent' => false, // Track if email has been sent
         ]);
 
-        // Send emails
-        try {
-            // Email to user
-            Mail::to($registration->email)->send(
-                new BootcampUserMail($registration, $studentId, $password)
-            );
-            
-            // Email to admin
-            Mail::to('skillfusionuniversity@gmail.com')->send(
-                new BootcampAdminMail($registration)
-            );
-            
-        } catch (\Exception $e) {
-            Log::error('Email sending error: ' . $e->getMessage());
-        }
+        // Send all emails immediately
+        $this->sendAllEmails($registration);
 
         return response()->json([
             'success' => true,
             'student_id' => $studentId,
-            'password' => $password,
+            'password' => $password, // Return password (same as student ID)
             'registration' => $registration
         ]);
     }
@@ -86,4 +76,81 @@ class BootcampRegistrationController extends Controller
 
         return $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
+
+    // Send all required emails
+    private function sendAllEmails(BootcampRegistration $registration)
+    {
+        $password = $registration->student_id; // Password same as student ID
+        
+        try {
+            // 1. Send course-specific admission email
+            if ($registration->course === 'ui-ux') {
+                Mail::to($registration->email)->send(
+                    new UIUXAdmissionMail($registration)
+                );
+            } else {
+                Mail::to($registration->email)->send(
+                    new WebDevAdmissionMail($registration)
+                );
+            }
+            
+            // 2. Send admin notification
+            Mail::to('skillfusionuniversity@gmail.com')->send(
+                new BootcampAdminMail($registration)
+            );
+            
+            // 3. Send welcome email with credentials
+            Mail::to($registration->email)->send(
+                new BootcampUserMail($registration, $registration->student_id, $password)
+            );
+            
+            // Mark admission email as sent
+            $registration->admission_email_sent = true;
+            $registration->save();
+            
+        } catch (\Exception $e) {
+            Log::error('Email sending failed: ' . $e->getMessage());
+        }
+    }
+
+    // Bulk email sending function
+    public function sendBulkAdmissionEmails()
+{
+    // Increase execution time limit
+    set_time_limit(600); // 10 minutes
+
+    // Get registrations count for progress tracking
+    $totalRegistrations = BootcampRegistration::where('admission_email_sent', false)->count();
+    $processed = 0;
+    $sentCount = 0;
+    $failedCount = 0;
+
+    // Process in chunks to reduce memory usage
+    BootcampRegistration::where('admission_email_sent', false)
+        ->chunkById(100, function ($registrations) use (&$sentCount, &$failedCount, &$processed, $totalRegistrations) {
+            foreach ($registrations as $registration) {
+                try {
+                    $this->sendAllEmails($registration);
+                    $sentCount++;
+                } catch (\Exception $e) {
+                    Log::error("Failed to send emails to {$registration->email}: " . $e->getMessage());
+                    $failedCount++;
+                }
+                $processed++;
+                
+                // Optional: Log progress
+                if ($processed % 50 === 0) {
+                    Log::info("Bulk email progress: $processed/$totalRegistrations");
+                }
+            }
+        });
+
+    return response()->json([
+        'success' => true,
+        'message' => "Bulk emails sent successfully. Total: $totalRegistrations, Sent: $sentCount, Failed: $failedCount",
+        'total' => $totalRegistrations,
+        'sent_count' => $sentCount,
+        'failed_count' => $failedCount
+    ]);
+}
 }
